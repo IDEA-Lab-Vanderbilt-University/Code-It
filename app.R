@@ -1478,13 +1478,84 @@ server <- function(input, output, session) {
 
   ##### UPLOAD DATA #####
 
-  # first clear existing dataset (if any) when user uploads a dataset
+  # first clear existing dataset (if any) when user uploads a dataset AND clear stuff from other tabs to avoid mismatched rows and other issues
+  # Observer to reset ALL data when new file is uploaded
   observeEvent(input$data_upload, {
-    session_values$saved_dataset <- NULL
-    session_values$saved_text_column <- NULL
+    tryCatch({
+      # Clear dataset
+      session_values$saved_dataset <- NULL
+      session_values$saved_text_column <- NULL
 
-    showNotification("New dataset uploaded. Previous dataset cleared.",
-                     type = "message", duration = 3)
+      # Clear codebook
+      # commented out for now -- user may want to keep code and codebook even after uploading new dataset
+      # values$codebook_input <- data.frame(
+      #   CodeName = c("Click to enter Code Name"),
+      #   CodeDefinition = c("Click to enter Code Definition"),
+      #   Examples = c("Click to enter Code Examples"),
+      #   stringsAsFactors = FALSE
+      # )
+
+      # Clear classifiers
+      # commented out for now -- user may want to keep classifier list even after uploading new dataset
+      # classifier_values$classifier_input <- data.frame(
+      #   Keywords = character(),
+      #   stringsAsFactors = FALSE
+      # )
+
+      # Clear training data
+      training_values$training_results <- data.frame(
+        .row_id = integer(),
+        text = character(),
+        user.coding = numeric(),
+        auto.coding = numeric(),
+        stringsAsFactors = FALSE
+      )
+      training_values$shown_indices <- integer()
+      training_values$current_sample <- NULL
+      training_values$current_.row_id <- NULL
+      training_values$current_example_type <- NULL
+
+      # Clear coded data
+      coded_data_values$coded_data <- NULL
+
+      # Clear validation data
+      validation_values$validation_pool <- NULL
+      validation_values$current_validation_item <- NULL
+      validation_values$current_pool_index <- NULL
+      validation_values$current_cycle_results <- data.frame(
+        .row_id = integer(),
+        text = character(),
+        user.coding = numeric(),
+        auto.coding = numeric(),
+        stringsAsFactors = FALSE
+      )
+      validation_values$all_validation_results <- data.frame()
+      validation_values$cais_n <- 0
+      validation_values$current_cycle <- 1
+      validation_values$perfect_agreements_current_cycle <- 0
+      validation_values$validation_complete <- FALSE
+      validation_values$cycle_failed <- FALSE
+      validation_values$total_items_coded <- 0
+      validation_values$estimated_baserate <- 0
+      validation_values$adjusted_baserate <- 0
+      validation_values$a_max <- 0
+
+      # Auto-save the cleared state
+      auto_save()
+
+      showNotification(
+        "New dataset uploaded. All previous training and test metrics have been cleared.",
+        type = "message",
+        duration = 5
+      )
+
+    }, error = function(e) {
+      showNotification(
+        paste("Error uploading datafile and resetting", e$message),
+        type = "error",
+        duration = 5
+      )
+    })
   })
 
   dataset <- reactive({
