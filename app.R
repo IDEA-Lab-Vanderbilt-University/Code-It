@@ -1478,6 +1478,15 @@ server <- function(input, output, session) {
 
   ##### UPLOAD DATA #####
 
+  # first clear existing dataset (if any) when user uploads a dataset
+  observeEvent(input$data_upload, {
+    session_values$saved_dataset <- NULL
+    session_values$saved_text_column <- NULL
+
+    showNotification("New dataset uploaded. Previous dataset cleared.",
+                     type = "message", duration = 3)
+  })
+
   dataset <- reactive({
     # First check if we have a saved dataset
     if (!is.null(session_values$saved_dataset)) {
