@@ -13,9 +13,12 @@ source("aws-config.R")
 # for predicting keywords using naive bayes
 source("predicting_keywords.R")
 
+# carl's util functions
+source("util.R")
+
 #### UI ####
 ui <-
-    navbarPage(
+  navbarPage(
     title = div(bs_icon("ui-checks"), "Code It!"),
     windowTitle = "Code It!",
     id = "tabs",
@@ -345,60 +348,60 @@ ui <-
       value = "about",
       conditionalPanel(
         condition = "output.authenticated == true",
-      fluidRow(
-        column(12,
-               wellPanel(
-                 #h3("About Code It!", style = "color: #2c3e50; margin-top: 0;"),
+        fluidRow(
+          column(12,
+                 wellPanel(
+                   #h3("About Code It!", style = "color: #2c3e50; margin-top: 0;"),
 
-                 h4("Overview", style = "color: #34495e; margin-top: 25px;"),
-                 p(strong("Code It!"), "streamlines automated qualitative coding by combining keyword-based classifiers with statistical validation. Keyword-based classifiers allow for fair and transparent automated coding processes. Build, train, and validate your coding system with confidence using perfect sampling methodology."),
+                   h4("Overview", style = "color: #34495e; margin-top: 25px;"),
+                   p(strong("Code It!"), "streamlines automated qualitative coding by combining keyword-based classifiers with statistical validation. Keyword-based classifiers allow for fair and transparent automated coding processes. Build, train, and validate your coding system with confidence using perfect sampling methodology."),
 
-                 h4("Workflow", style = "color: #34495e; margin-top: 25px;"),
-                 tags$ol(
-                   tags$li(strong("Upload Data"), "– Import your CSV or Excel file and select the column with data"),
-                   tags$li(strong("Create Code"), "– Validate one code at a time. Define your code with a name, definition, and examples."),
-                   tags$li(strong("Create Classifiers"), "– Add keywords or regex patterns to identify your code."),
-                   tags$li(strong("Training"), "– Review examples and refine your classifier. Keep track of Cohen's Kappa, False Discovery Rate, and False Omission Rate."),
-                   tags$li(strong("Validation"), "– Achieve κ ≥ 0.80 through perfect sampling cycles."),
-                   tags$li(strong("Code Dataset"), "– Apply your validated classifier to all data and download final metrics.")
-                 ),
+                   h4("Workflow", style = "color: #34495e; margin-top: 25px;"),
+                   tags$ol(
+                     tags$li(strong("Upload Data"), "– Import your CSV or Excel file and select the column with data"),
+                     tags$li(strong("Create Code"), "– Validate one code at a time. Define your code with a name, definition, and examples."),
+                     tags$li(strong("Create Classifiers"), "– Add keywords or regex patterns to identify your code."),
+                     tags$li(strong("Training"), "– Review examples and refine your classifier. Keep track of Cohen's Kappa, False Discovery Rate, and False Omission Rate."),
+                     tags$li(strong("Validation"), "– Achieve κ ≥ 0.80 through perfect sampling cycles."),
+                     tags$li(strong("Code Dataset"), "– Apply your validated classifier to all data and download final metrics.")
+                   ),
 
-                 h4("Perfect Sampling Validation", style = "color: #34495e; margin-top: 25px;"),
-                 p("The app uses a cycle-based perfect validation approach ",
-                   a("(Shaffer & Cai's 2024)", href = "https://doi.org/10.1007/978-3-031-76335-9_4", target="_blank")),
-                 tags$ul(
-                   tags$li("Calculates required sample size (Cai's N) based on your classifier's performance"),
-                   tags$li("Tracks consecutive perfect agreements between you and the classifier"),
-                   tags$li("Any disagreement ends the cycle, moves the item to training, and prompts classifier refinement"),
-                   tags$li("Validation is complete when you achieve the required number of consecutive agreements (κ > 0.80, α = 0.025)")
-                 ),
-                 p("This ensures statistical confidence before coding your full dataset."),
+                   h4("Perfect Sampling Validation", style = "color: #34495e; margin-top: 25px;"),
+                   p("The app uses a cycle-based perfect validation approach ",
+                     a("(Shaffer & Cai's 2024)", href = "https://doi.org/10.1007/978-3-031-76335-9_4", target="_blank")),
+                   tags$ul(
+                     tags$li("Calculates required sample size (Cai's N) based on your classifier's performance"),
+                     tags$li("Tracks consecutive perfect agreements between you and the classifier"),
+                     tags$li("Any disagreement ends the cycle, moves the item to training, and prompts classifier refinement"),
+                     tags$li("Validation is complete when you achieve the required number of consecutive agreements (κ > 0.80, α = 0.025)")
+                   ),
+                   p("This ensures statistical confidence before coding your full dataset."),
 
-                 h4("Acknowledgments and References", style = "color: #34495e; margin-top: 25px;"),
-                 p("Inspired by the ", a("Epistemic Analytics Lab ", href="https://www.epistemicanalytics.org", target="_blank"), "and developed with assistance from Claude's Sonnet v4.5 LLM model."),
-                 p("Shaffer, D.W. & Cai, Z. (2024). ", a("Perfect Sampling.", href = "https://doi.org/10.1007/978-3-031-76335-9_4", target="_blank")),
-                 p("Shaffer, D.W. & Ruis, A.R. (2021). ", a("How We Code.", href = "https://doi.org/10.1007/978-3-030-67788-6_5", target="_blank")),
-                 p("Eagan, B. & colleagues. (2015). ", a("Can We Rely on IRR?", href="https://repository.isls.org/handle/1/275", target="_blank")),
-                 p("Arastoopour Irgens, G. & Eagan, B. (2023). ", a("The Foundations and Fundamentals of Quantitative Ethnography", href="https://par.nsf.gov/servlets/purl/10442783", target="_blank")),
+                   h4("Acknowledgments and References", style = "color: #34495e; margin-top: 25px;"),
+                   p("Inspired by the ", a("Epistemic Analytics Lab ", href="https://www.epistemicanalytics.org", target="_blank"), "and developed with assistance from Claude's Sonnet v4.5 LLM model."),
+                   p("Shaffer, D.W. & Cai, Z. (2024). ", a("Perfect Sampling.", href = "https://doi.org/10.1007/978-3-031-76335-9_4", target="_blank")),
+                   p("Shaffer, D.W. & Ruis, A.R. (2021). ", a("How We Code.", href = "https://doi.org/10.1007/978-3-030-67788-6_5", target="_blank")),
+                   p("Eagan, B. & colleagues. (2015). ", a("Can We Rely on IRR?", href="https://repository.isls.org/handle/1/275", target="_blank")),
+                   p("Arastoopour Irgens, G. & Eagan, B. (2023). ", a("The Foundations and Fundamentals of Quantitative Ethnography", href="https://par.nsf.gov/servlets/purl/10442783", target="_blank")),
 
-                 h4("Author", style = "color: #34495e; margin-top: 25px;"),
-                 p(strong("Golnaz Arastoopour Irgens")),
+                   h4("Author", style = "color: #34495e; margin-top: 25px;"),
+                   p(strong("Golnaz Arastoopour Irgens")),
 
-                 h4("Recommended Citation", style = "color: #34495e; margin-top: 25px;"),
-                 p("If you use Code It! in your research, please cite:"),
-                 div(
-                   style = "background-color: #f8f9fa; padding: 15px; border-left: 4px solid #667eea; margin: 15px 0; border-radius: 4px;",
-                   p("Arastoopour Irgens, G. (2025).", em("Code It!: A web-based application for developing and validating automated qualitative coding systems."), "[URL]", style = "margin: 0;")
-                 ),
+                   h4("Recommended Citation", style = "color: #34495e; margin-top: 25px;"),
+                   p("If you use Code It! in your research, please cite:"),
+                   div(
+                     style = "background-color: #f8f9fa; padding: 15px; border-left: 4px solid #667eea; margin: 15px 0; border-radius: 4px;",
+                     p("Arastoopour Irgens, G. (2025).", em("Code It!: A web-based application for developing and validating automated qualitative coding systems."), "[URL]", style = "margin: 0;")
+                   ),
 
-                 hr(),
+                   hr(),
 
-                 p(em("Secure user authentication via AWS Cognito • Auto-saves your progress • Private user data storage"),
-                   style = "text-align: center; color: #7f8c8d; font-size: 14px; margin-top: 20px;")
-               )
+                   p(em("Secure user authentication via AWS Cognito • Auto-saves your progress • Private user data storage"),
+                     style = "text-align: center; color: #7f8c8d; font-size: 14px; margin-top: 20px;")
+                 )
+          )
         )
       )
-    )
     ),
 
     #### UPLOAD DATA ####
@@ -408,43 +411,43 @@ ui <-
       conditionalPanel(
         condition = "output.authenticated == true",
 
-      fluidRow(
-        column(12,
-               wellPanel(
-                 h4("Upload Data"),
-                 fluidRow(
-                   column(4,
-                          fileInput("data_upload", "Upload CSV or Excel File",
-                                    accept = c(".csv", ".xls", ".xlsx"))
+        fluidRow(
+          column(12,
+                 wellPanel(
+                   h4("Upload Data"),
+                   fluidRow(
+                     column(4,
+                            fileInput("data_upload", "Upload CSV or Excel File",
+                                      accept = c(".csv", ".xls", ".xlsx"))
+                     ),
+                     column(2),
+                     column(4,
+                            selectInput("textColumn", "Select the column with text data", choices = "")
+                     )
                    ),
-                   column(2),
-                   column(4,
-                          selectInput("textColumn", "Select the column with text data", choices = "")
-                   )
-                 ),
-                 fluidRow(
-                   column(12,
-                          DT::dataTableOutput("uploaded_data")
+                   fluidRow(
+                     column(12,
+                            DT::dataTableOutput("uploaded_data")
+                     )
                    )
                  )
-               )
-        )
-      ),
+          )
+        ),
 
-      # Next Step Box
-      fluidRow(
-        column(12,
-               div(
-                 class = "alert alert-info",
-                 style = "margin-top: 20px;",
-                 h5(icon("lightbulb"), " Next Step", style = "color: #004085; display: inline; margin-left: 5px;"),
-                 p("Once you've uploaded your data and selected the text column, proceed to define your code.",
-                   style = "margin: 10px 0;"),
-                 actionButton("goto_create_code", "Go to Create Code →",
-                              class = "btn-primary")
-               )
+        # Next Step Box
+        fluidRow(
+          column(12,
+                 div(
+                   class = "alert alert-info",
+                   style = "margin-top: 20px;",
+                   h5(icon("lightbulb"), " Next Step", style = "color: #004085; display: inline; margin-left: 5px;"),
+                   p("Once you've uploaded your data and selected the text column, proceed to define your code.",
+                     style = "margin: 10px 0;"),
+                   actionButton("goto_create_code", "Go to Create Code →",
+                                class = "btn-primary")
+                 )
+          )
         )
-      )
       )
     ),
 
@@ -455,35 +458,35 @@ ui <-
       value = "create_codebook",
       conditionalPanel(
         condition = "output.authenticated == true",
-      fluidRow(
-        column(12,
-               wellPanel(
-                 h4("Create Your Code"),
-                 p("Define a single code for your analysis",
-                   style = "color: #6c757d; font-size: 14px; margin-bottom: 15px;"),
-                 fluidRow(
-                   column(12,
-                          DT::dataTableOutput("created_codebook")
+        fluidRow(
+          column(12,
+                 wellPanel(
+                   h4("Create Your Code"),
+                   p("Define a single code for your analysis",
+                     style = "color: #6c757d; font-size: 14px; margin-bottom: 15px;"),
+                   fluidRow(
+                     column(12,
+                            DT::dataTableOutput("created_codebook")
+                     )
                    )
                  )
-               )
-        )
-      ),
-      # Next Step Box
-      fluidRow(
-        column(12,
-               div(
-                 class = "alert alert-info",
-                 style = "margin-top: 20px;",
-                 h5(icon("lightbulb"), " Next Step", style = "color: #004085; display: inline; margin-left: 5px;"),
-                 p("After defining your code name, definition, and examples, proceed to add classifiers/keywords.",
-                   style = "margin: 10px 0;"),
-                 actionButton("goto_create_classifiers", "Go to Create Classifiers →",
-                              class = "btn-primary")
-               )
+          )
+        ),
+        # Next Step Box
+        fluidRow(
+          column(12,
+                 div(
+                   class = "alert alert-info",
+                   style = "margin-top: 20px;",
+                   h5(icon("lightbulb"), " Next Step", style = "color: #004085; display: inline; margin-left: 5px;"),
+                   p("After defining your code name, definition, and examples, proceed to add classifiers/keywords.",
+                     style = "margin: 10px 0;"),
+                   actionButton("goto_create_classifiers", "Go to Create Classifiers →",
+                                class = "btn-primary")
+                 )
+          )
         )
       )
-    )
     ),
 
     #### CREATE CLASSIFIERS ####
@@ -492,47 +495,47 @@ ui <-
       value = "create_classifiers",
       conditionalPanel(
         condition = "output.authenticated == true",
-      fluidRow(
-        column(12,
-               wellPanel(
-                 h4("Add Classifier for: ", style = "display: inline;"),
-                 h4(textOutput("current_code_name", inline = TRUE),
-                    style = "display: inline; color: #007bff; font-weight: bold;")
-               )
-        )
-      ),
-      fluidRow(
-        column(12,
-               wellPanel(
-                 fluidRow(
-                   column(8,
-                          div(
-                            tags$label(
-                              "Keywords ",
-                              bslib::tooltip(
-                                span(icon("info-circle"), style = "cursor: help; color: #007bff;"),
-                                "Enter comma-separated keywords or regex patterns. Example: love, \\bdevot, (?<=eternal\\s)adoration",
-                                placement = "right"
-                              )
-                            ),
-                            textInput("classifier_keywords",
-                                      label = NULL,
-                                      placeholder = "Enter keywords or regex patterns (comma-separated)")
-                          )
-                   ),
+        fluidRow(
+          column(12,
+                 wellPanel(
+                   h4("Add Classifier for: ", style = "display: inline;"),
+                   h4(textOutput("current_code_name", inline = TRUE),
+                      style = "display: inline; color: #007bff; font-weight: bold;")
+                 )
+          )
+        ),
+        fluidRow(
+          column(12,
+                 wellPanel(
+                   fluidRow(
+                     column(8,
+                            div(
+                              tags$label(
+                                "Keywords ",
+                                bslib::tooltip(
+                                  span(icon("info-circle"), style = "cursor: help; color: #007bff;"),
+                                  "Enter comma-separated keywords or regex patterns. Example: love, \\bdevot, (?<=eternal\\s)adoration",
+                                  placement = "right"
+                                )
+                              ),
+                              textInput("classifier_keywords",
+                                        label = NULL,
+                                        placeholder = "Enter keywords or regex patterns (comma-separated)")
+                            )
+                     ),
 
-                   column(4,
-                          br(),
-                          actionButton("add_classifier_submit",
-                                       "Add Keywords",
-                                       class = "btn-primary btn-block",
-                                       style = "margin-top: 5px;")
+                     column(4,
+                            br(),
+                            actionButton("add_classifier_submit",
+                                         "Add Keywords",
+                                         class = "btn-primary btn-block",
+                                         style = "margin-top: 5px;")
+                     )
                    )
                  )
-               )
+          )
         )
-      )
-    ),
+      ),
 
       fluidRow(
         column(12,
@@ -547,173 +550,31 @@ ui <-
         )
       ),
 
-    fluidRow(
-      column(12,
-             wellPanel(
-               h4("Keyword Suggester", style = "margin-bottom: 15px;"),
-               p("After training your classifier, use Naive Bayes AI to suggest relevant keywords based on your coded examples. Requires at least 10 trained examples.",
-                 style = "color: #6c757d; font-size: 14px; margin-bottom: 15px;"),
-
-               fluidRow(
-                 column(4,
-                        actionButton("predict_classifiers",
-                                     "Generate Keyword Suggestions",
-                                     icon = icon("magic"),
-                                     class = "btn-info btn-block")
-                 )
-               ),
-
-               # Show suggestions when available
-               conditionalPanel(
-                 condition = "output.has_suggestions",
-                 hr(),
-                 h5("Suggested Keywords", style = "margin-top: 20px; margin-bottom: 10px;"),
-                 p("These keywords appear more frequently in your positive examples. Click 'Add' to include them in your classifier.",
-                   style = "color: #6c757d; font-size: 13px; margin-bottom: 15px;"),
-                 DT::dataTableOutput("suggested_keywords_table")
-               )
-             )
-      )
-    ),
-
-    # Next Step Box
-    fluidRow(
-      column(12,
-             div(
-               class = "alert alert-info",
-               style = "margin-top: 20px;",
-               h5(icon("lightbulb"), " Next Step", style = "color: #004085; display: inline; margin-left: 5px;"),
-               p("After adding your keywords/classifiers, proceed to train your classifier.",
-                 style = "margin: 10px 0;"),
-               actionButton("goto_training", "Go to Training →",
-                            class = "btn-primary")
-             )
-      )
-    )
-    ),
-
-    #### TRAINING ####
-    tabPanel(
-      title = "Training",
-      value = "training",
-      conditionalPanel(
-        condition = "output.authenticated == true",
       fluidRow(
         column(12,
                wellPanel(
-                 h4("Training for: ", style = "display: inline;"),
-                 h4(textOutput("training_code_name", inline = TRUE),
-                    style = "display: inline; color: #007bff; font-weight: bold;")
-               )
-        )
-      ),
-
-      fluidRow(
-        column(6,
-               wellPanel(
-                 h4("Confusion Matrix"),
-                 p("This shows how well the automated classifier matches your coding decisions",
+                 h4("Keyword Suggester", style = "margin-bottom: 15px;"),
+                 p("After training your classifier, use Naive Bayes AI to suggest relevant keywords based on your coded examples. Requires at least 10 trained examples.",
                    style = "color: #6c757d; font-size: 14px; margin-bottom: 15px;"),
-                 DT::dataTableOutput("confusion_matrix_table")
-               )
-        ),
-        column(6,
-               wellPanel(
-                 h4("Training Metrics"),
-                 p("These metrics tell you how well the automated classifier is performing",
-                   style = "color: #6c757d; font-size: 14px; margin-bottom: 15px;"),
-                 DT::dataTableOutput("training_metrics")
-               )
-        )
-      ),
-      fluidRow(
-        column(9,
-               wellPanel(
-                 h4("Train the Autocoder"),
-                 fluidRow(
-                   column(6,
-                          actionButton("show_positive",
-                                       "Show Positive Example",
-                                       class = "btn-block",
-                                       style = "margin-bottom: 10px;")
-                   ),
-                   column(6,
-                          actionButton("show_negative",
-                                       "Show Negative Example",
-                                       class = "btn-block",
-                                       style = "margin-bottom: 10px;")
-                   )
-                 ),
-                 fluidRow(
-                   column(12,
-                          div(
-                            style = "background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 5px; min-height: 300px; max-height: 400px; overflow-y: auto; word-wrap: break-word; white-space: pre-wrap;",
-                            uiOutput("sample_text")
-                          )
-                   )
-                 ),
-                 fluidRow(
-                   column(12,
-                          br(),
-                          align = "center",
-                          shinyjs::hidden(
-                            actionButton("training_yes",
-                                         "YES -- This Should be Coded",
-                                         icon = icon("check"),
-                                         class = "btn-success btn-lg"
-                            )
-                          ),
-                          shinyjs::hidden(
-                            actionButton("training_no",
-                                         "NO -- This Should NOT be Coded",
-                                         icon = icon("times"),
-                                         class = "btn-danger btn-lg"
-                            )
-                          )
-                   )
-                 )
-               )
-        ),
-        column(3,
-               wellPanel(
-                 h4("Next Steps"),
-                 actionButton(
-                   "move_to_testing",
-                   "Move to Validation",
-                   icon = icon("arrow-right"),
-                   class = "btn-primary btn-block",
-                   style = "margin-bottom: 10px;"
-                 ),
-                 actionButton(
-                   "move_back_classifier",
-                   "Revise Classifiers",
-                   icon = icon("arrow-left"),
-                   class="btn-info btn-block",
-                   style = "margin-bottom: 10px;"
-                 ),
-                 br(),
-                 br(),
-                 actionButton(
-                   "reset_training_metrics",
-                   "Reset All Training Metrics",
-                   icon = icon("refresh"),
-                   class = "btn-warning btn-block",
-                   style = "margin-bottom: 10px;"
-                 ),
-                 br(),
-                 br(),
-                 downloadButton(
-                   "download_training_data",
-                   "Download Training Results",
-                   class = "btn-secondary btn-block",
-                   style = "margin-bottom: 10px;"
-                 ),
-                 downloadButton(
-                   "download_training_metrics",
-                   "Download Training Metrics",
-                   class = "btn-secondary btn-block"
-                 )
 
+                 fluidRow(
+                   column(4,
+                          actionButton("predict_classifiers",
+                                       "Generate Keyword Suggestions",
+                                       icon = icon("magic"),
+                                       class = "btn-info btn-block")
+                   )
+                 ),
+
+                 # Show suggestions when available
+                 conditionalPanel(
+                   condition = "output.has_suggestions",
+                   hr(),
+                   h5("Suggested Keywords", style = "margin-top: 20px; margin-bottom: 10px;"),
+                   p("These keywords appear more frequently in your positive examples. Click 'Add' to include them in your classifier.",
+                     style = "color: #6c757d; font-size: 13px; margin-bottom: 15px;"),
+                   DT::dataTableOutput("suggested_keywords_table")
+                 )
                )
         )
       ),
@@ -724,70 +585,73 @@ ui <-
                div(
                  class = "alert alert-info",
                  style = "margin-top: 20px;",
-                 h5(icon("lightbulb"), " Ready for Validation?", style = "color: #004085; display: inline; margin-left: 5px;"),
-                 p("Once you are satified with your Cohen's Kappa, FDR, and FOR, move on to validation.",
+                 h5(icon("lightbulb"), " Next Step", style = "color: #004085; display: inline; margin-left: 5px;"),
+                 p("After adding your keywords/classifiers, proceed to train your classifier.",
                    style = "margin: 10px 0;"),
-                 actionButton("goto_validation", "Go to Validation →",
+                 actionButton("goto_training", "Go to Training →",
                               class = "btn-primary")
                )
         )
       )
-    )
     ),
 
-    #### VALIDATION ####
+    #### TRAINING ####
     tabPanel(
-      title = "Validation",
-      value = "validation",
+      title = "Training",
+      value = "training",
       conditionalPanel(
         condition = "output.authenticated == true",
-      fluidRow(
-        column(6,
-               wellPanel(
-                 style = "height: 140px;",
-                 h4("Perfect Sampling", style = "display: inline-block; margin-bottom: 15px;"),
-                 p("Validation complete when Kappa ≥ 0.80.",
-                   style = "color: #6c757d; font-size: 14px; margin-bottom: 2px;"),
-                 p("Any disagreement will immediately end this cycle and require classifier refinement.",
-                   style = "color: #6c757d; font-size: 14px; margin-bottom: 15px;")
-               )
+        fluidRow(
+          column(12,
+                 wellPanel(
+                   h4("Training for: ", style = "display: inline;"),
+                   h4(textOutput("training_code_name", inline = TRUE),
+                      style = "display: inline; color: #007bff; font-weight: bold;")
+                 )
+          )
         ),
-        column(6,
-               wellPanel(
-                 style = "height: 140px;",
-                 h4("Validation for: ", style = "display: inline;"),
-                 h4(textOutput("validation_code_name", inline = TRUE),
-                    style = "display: inline; color: #007bff; font-weight: bold;")
-               )
-        )
-      ),
 
-      fluidRow(
-        column(6,
-               wellPanel(
-                 h4("Current Cycle Metrics"),
-                 DT::dataTableOutput("validation_current_cycle")
-               )
+        fluidRow(
+          column(6,
+                 wellPanel(
+                   h4("Confusion Matrix"),
+                   p("This shows how well the automated classifier matches your coding decisions",
+                     style = "color: #6c757d; font-size: 14px; margin-bottom: 15px;"),
+                   DT::dataTableOutput("confusion_matrix_table")
+                 )
+          ),
+          column(6,
+                 wellPanel(
+                   h4("Training Metrics"),
+                   p("These metrics tell you how well the automated classifier is performing",
+                     style = "color: #6c757d; font-size: 14px; margin-bottom: 15px;"),
+                   DT::dataTableOutput("training_metrics")
+                 )
+          )
         ),
-        column(6,
-               wellPanel(
-                 h4("Overall Validation Metrics"),
-                 DT::dataTableOutput("validation_overall")
-               )
-        )
-      ),
-
-      fluidRow(
-        column(8,
-               wellPanel(
-                 h4("Validation Item"),
-                 div(
-                   id = "validation_controls",
+        fluidRow(
+          column(9,
+                 wellPanel(
+                   h4("Train the Autocoder"),
+                   fluidRow(
+                     column(6,
+                            actionButton("show_positive",
+                                         "Show Positive Example",
+                                         class = "btn-block",
+                                         style = "margin-bottom: 10px;")
+                     ),
+                     column(6,
+                            actionButton("show_negative",
+                                         "Show Negative Example",
+                                         class = "btn-block",
+                                         style = "margin-bottom: 10px;")
+                     )
+                   ),
                    fluidRow(
                      column(12,
                             div(
                               style = "background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 5px; min-height: 300px; max-height: 400px; overflow-y: auto; word-wrap: break-word; white-space: pre-wrap;",
-                              uiOutput("validation_text")
+                              uiOutput("sample_text")
                             )
                      )
                    ),
@@ -796,91 +660,230 @@ ui <-
                             br(),
                             align = "center",
                             shinyjs::hidden(
-                              actionButton("validate_yes",
-                                           "YES - This should be coded",
+                              actionButton("training_yes",
+                                           "YES -- This Should be Coded",
                                            icon = icon("check"),
-                                           class = "btn-success btn-lg",
-                                           style = "margin-right: 10px;"
+                                           class = "btn-success btn-lg"
                               )
                             ),
                             shinyjs::hidden(
-                              actionButton("validate_no",
-                                           "NO - This should not be coded",
+                              actionButton("training_no",
+                                           "NO -- This Should NOT be Coded",
                                            icon = icon("times"),
                                            class = "btn-danger btn-lg"
                               )
                             )
                      )
                    )
-                 ),
-                 shinyjs::hidden(
+                 )
+          ),
+          column(3,
+                 wellPanel(
+                   h4("Next Steps"),
+                   actionButton(
+                     "move_to_testing",
+                     "Move to Validation",
+                     icon = icon("arrow-right"),
+                     class = "btn-primary btn-block",
+                     style = "margin-bottom: 10px;"
+                   ),
+                   actionButton(
+                     "move_back_classifier",
+                     "Revise Classifiers",
+                     icon = icon("arrow-left"),
+                     class="btn-info btn-block",
+                     style = "margin-bottom: 10px;"
+                   ),
+                   br(),
+                   br(),
+                   actionButton(
+                     "reset_training_metrics",
+                     "Reset All Training Metrics",
+                     icon = icon("refresh"),
+                     class = "btn-warning btn-block",
+                     style = "margin-bottom: 10px;"
+                   ),
+                   br(),
+                   br(),
+                   downloadButton(
+                     "download_training_data",
+                     "Download Training Results",
+                     class = "btn-secondary btn-block",
+                     style = "margin-bottom: 10px;"
+                   ),
+                   downloadButton(
+                     "download_training_metrics",
+                     "Download Training Metrics",
+                     class = "btn-secondary btn-block"
+                   )
+
+                 )
+          )
+        ),
+
+        # Next Step Box
+        fluidRow(
+          column(12,
+                 div(
+                   class = "alert alert-info",
+                   style = "margin-top: 20px;",
+                   h5(icon("lightbulb"), " Ready for Validation?", style = "color: #004085; display: inline; margin-left: 5px;"),
+                   p("Once you are satified with your Cohen's Kappa, FDR, and FOR, move on to validation.",
+                     style = "margin: 10px 0;"),
+                   actionButton("goto_validation", "Go to Validation →",
+                                class = "btn-primary")
+                 )
+          )
+        )
+      )
+    ),
+
+    #### VALIDATION ####
+    tabPanel(
+      title = "Validation",
+      value = "validation",
+      conditionalPanel(
+        condition = "output.authenticated == true",
+        fluidRow(
+          column(6,
+                 wellPanel(
+                   style = "height: 140px;",
+                   h4("Perfect Sampling", style = "display: inline-block; margin-bottom: 15px;"),
+                   p("Validation complete when Kappa ≥ 0.80.",
+                     style = "color: #6c757d; font-size: 14px; margin-bottom: 2px;"),
+                   p("Any disagreement will immediately end this cycle and require classifier refinement.",
+                     style = "color: #6c757d; font-size: 14px; margin-bottom: 15px;")
+                 )
+          ),
+          column(6,
+                 wellPanel(
+                   style = "height: 140px;",
+                   h4("Validation for: ", style = "display: inline;"),
+                   h4(textOutput("validation_code_name", inline = TRUE),
+                      style = "display: inline; color: #007bff; font-weight: bold;")
+                 )
+          )
+        ),
+
+        fluidRow(
+          column(6,
+                 wellPanel(
+                   h4("Current Cycle Metrics"),
+                   DT::dataTableOutput("validation_current_cycle")
+                 )
+          ),
+          column(6,
+                 wellPanel(
+                   h4("Overall Validation Metrics"),
+                   DT::dataTableOutput("validation_overall")
+                 )
+          )
+        ),
+
+        fluidRow(
+          column(8,
+                 wellPanel(
+                   h4("Validation Item"),
                    div(
-                     id = "validation_complete",
+                     id = "validation_controls",
+                     fluidRow(
+                       column(12,
+                              div(
+                                style = "background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 5px; min-height: 300px; max-height: 400px; overflow-y: auto; word-wrap: break-word; white-space: pre-wrap;",
+                                uiOutput("validation_text")
+                              )
+                       )
+                     ),
+                     fluidRow(
+                       column(12,
+                              br(),
+                              align = "center",
+                              shinyjs::hidden(
+                                actionButton("validate_yes",
+                                             "YES - This should be coded",
+                                             icon = icon("check"),
+                                             class = "btn-success btn-lg",
+                                             style = "margin-right: 10px;"
+                                )
+                              ),
+                              shinyjs::hidden(
+                                actionButton("validate_no",
+                                             "NO - This should not be coded",
+                                             icon = icon("times"),
+                                             class = "btn-danger btn-lg"
+                                )
+                              )
+                       )
+                     )
+                   ),
+                   shinyjs::hidden(
                      div(
-                       class = "alert alert-success",
-                       style = "text-align: center; margin-top: 20px;",
-                       h4("? Validation Complete!"),
-                       p("Kappa threshold reached. Your classifier is performing well!")
+                       id = "validation_complete",
+                       div(
+                         class = "alert alert-success",
+                         style = "text-align: center; margin-top: 20px;",
+                         h4("? Validation Complete!"),
+                         p("Kappa threshold reached. Your classifier is performing well!")
+                       )
                      )
                    )
                  )
-               )
-        ),
+          ),
 
-        column(4,
-               wellPanel(
-                 h4("Next Steps"),
+          column(4,
+                 wellPanel(
+                   h4("Next Steps"),
 
-                 # Show before validation is complete
-                 conditionalPanel(
-                   condition = "!output.validation_complete_flag",
-                   p("Complete perfect sampling validation to proceed.",
-                     style = "color: #6c757d; font-size: 14px; margin-bottom: 15px;"),
-                   actionButton("restart_validation",
-                                "Restart Validation",
-                                icon = icon("refresh"),
-                                class = "btn-warning btn-block",
-                                style = "margin-bottom: 10px;"
-                   )
-                 ),
-
-                 # Show after validation is complete
-                 conditionalPanel(
-                   condition = "output.validation_complete_flag",
-                   div(
-                     class = "alert alert-success",
-                     style = "text-align: center; margin-bottom: 20px;",
-                     h5("? Validation Complete!", style = "color: #28a745; margin-bottom: 10px;"),
-                     p("κ > 0.80 achieved through perfect sampling", style = "margin: 0; font-weight: bold;")
+                   # Show before validation is complete
+                   conditionalPanel(
+                     condition = "!output.validation_complete_flag",
+                     p("Complete perfect sampling validation to proceed.",
+                       style = "color: #6c757d; font-size: 14px; margin-bottom: 15px;"),
+                     actionButton("restart_validation",
+                                  "Restart Validation",
+                                  icon = icon("refresh"),
+                                  class = "btn-warning btn-block",
+                                  style = "margin-bottom: 10px;"
+                     )
                    ),
-                   actionButton("code_entire_dataset",
-                                "Code Entire Dataset",
-                                icon = icon("magic"),
-                                class = "btn-success btn-block btn-lg",
-                                style = "margin-bottom: 15px;"),
-                   p("This will apply your validated classifier to all data and provide download.",
-                     style = "color: #6c757d; font-size: 13px; text-align: center; margin-bottom: 20px;"),
-                   actionButton("restart_validation",
-                                "Restart Validation",
-                                icon = icon("refresh"),
-                                class = "btn-warning btn-block btn-sm")
-                 ),
 
-                 # Always available downloads
-                 hr(),
-                 downloadButton("download_validation_results",
-                                "Download Validation Results",
-                                class = "btn-secondary btn-block"
-                 ),
-                 downloadButton("download_validation_current_cycle",
-                                "Download Validation Metrics",
-                                class = "btn-secondary btn-block",
-                                style = "margin-top: 10px;"
+                   # Show after validation is complete
+                   conditionalPanel(
+                     condition = "output.validation_complete_flag",
+                     div(
+                       class = "alert alert-success",
+                       style = "text-align: center; margin-bottom: 20px;",
+                       h5("? Validation Complete!", style = "color: #28a745; margin-bottom: 10px;"),
+                       p("κ > 0.80 achieved through perfect sampling", style = "margin: 0; font-weight: bold;")
+                     ),
+                     actionButton("code_entire_dataset",
+                                  "Code Entire Dataset",
+                                  icon = icon("magic"),
+                                  class = "btn-success btn-block btn-lg",
+                                  style = "margin-bottom: 15px;"),
+                     p("This will apply your validated classifier to all data and provide download.",
+                       style = "color: #6c757d; font-size: 13px; text-align: center; margin-bottom: 20px;"),
+                     actionButton("restart_validation",
+                                  "Restart Validation",
+                                  icon = icon("refresh"),
+                                  class = "btn-warning btn-block btn-sm")
+                   ),
+
+                   # Always available downloads
+                   hr(),
+                   downloadButton("download_validation_results",
+                                  "Download Validation Results",
+                                  class = "btn-secondary btn-block"
+                   ),
+                   downloadButton("download_validation_current_cycle",
+                                  "Download Validation Metrics",
+                                  class = "btn-secondary btn-block",
+                                  style = "margin-top: 10px;"
+                   )
                  )
-               )
+          )
         )
       )
-    )
     ),
 
     #### LOGOUT ####
@@ -896,7 +899,7 @@ ui <-
       value = "logout_panel",
     )
 
-    ) # end of UI
+  ) # end of UI
 
 
 ##### SERVER #####
@@ -1836,7 +1839,7 @@ server <- function(input, output, session) {
     classifier_values$classifier_input <- rbind(classifier_values$classifier_input, new_row)
     updateTextInput(session, "classifier_keywords", value = "")
     auto_save()  # Auto-save when classifiers change
-})
+  })
 
   # Handle individual keyword deletion
   observeEvent(input$delete_individual_keyword, {
@@ -2749,7 +2752,10 @@ server <- function(input, output, session) {
   }
 
   # Calculate Cai's N with proper edge case handling
-  calculate_cais_n <- function(tau_kappa = 0.80, base_rate, alpha = 0.025, previously_coded = 0) {
+
+  # Carl's note: added argument data_size for this function
+
+  calculate_cais_n <- function(tau_kappa = 0.80, base_rate, alpha = 0.025, data_size,previously_coded = 0) {
     req(base_rate >= 0, base_rate <= 1)
 
     # Handle extreme base rates first
@@ -2780,16 +2786,20 @@ server <- function(input, output, session) {
     }
 
     # Calculate maximum accuracy using equation from the paper
-    numerator <- b1_hat * tau_kappa
-    denominator <- 1 - tau_kappa + tau_kappa * b1_hat + b1_hat * (1 - tau_kappa)
+    # numerator <- b1_hat * tau_kappa
+    # denominator <- 1 - tau_kappa + tau_kappa * b1_hat + b1_hat * (1 - tau_kappa)
 
-    if (denominator <= 0) {
-      return(list(cais_n = Inf, a_max = NA, b1_adjusted = b1_hat))
-    }
+    # if (denominator <= 0) {
+    #   return(list(cais_n = Inf, a_max = NA, b1_adjusted = b1_hat))
+    # }
 
-    fraction_term <- numerator / denominator
-    a_max <- 1 - b1_hat + b1_hat * tau_kappa - (1 - tau_kappa) * (1 - 2 * b1_hat) * fraction_term
+    # fraction_term <- numerator / denominator
+    # a_max <- 1 - b1_hat + b1_hat * tau_kappa - (1 - tau_kappa) * (1 - 2 * b1_hat) * fraction_term
 
+    # Carl's note: I commented the block above
+    # and uses the following line
+    # to corrrectly compute a_max
+    a_max<-max_accuracy(b1_hat,tau_kappa)
     # Check if a_max is reasonable
     if (a_max <= 0.5 || a_max >= 1) {
       showNotification(
@@ -2809,7 +2819,9 @@ server <- function(input, output, session) {
     cais_n <- ceiling(log(alpha) / log(a_max))
 
     # Cap Cai's N at reasonable maximum (based on available data size)
-    max_reasonable_n <- min(1000, nrow(coded_data_values$coded_data) * 0.1)  # Cap at 10% of dataset
+    # max_reasonable_n <- min(1000, nrow(coded_data_values$coded_data) * 0.1)  # Cap at 10% of dataset
+    max_reasonable_n <- min(1000, data_size * 0.1)  # Cap at 10% of dataset
+
     if (cais_n > max_reasonable_n) {
       showNotification(
         paste("Cai's N too large:", cais_n, "- Capped at", max_reasonable_n,
@@ -2899,7 +2911,8 @@ server <- function(input, output, session) {
       tau_kappa = 0.80,
       base_rate = estimated_baserate,
       alpha = 0.025,
-      previously_coded = previously_coded
+      previously_coded = previously_coded,
+      data_size = nrow(coded_data_values$coded_data)
     )
 
     if (is.infinite(cais_result$cais_n)) {
@@ -3254,14 +3267,14 @@ server <- function(input, output, session) {
           validation_values$current_cycle,
           validation_values$cais_n,
           paste0(#progress_pct,
-                 #"% (",
-                 validation_values$perfect_agreements_current_cycle,
-                 "/",
-                 validation_values$cais_n,
-                 #")",
-                 "<br>",
-                 #validation_values$perfect_agreements_current_cycle,
-                 "items coded")
+            #"% (",
+            validation_values$perfect_agreements_current_cycle,
+            "/",
+            validation_values$cais_n,
+            #")",
+            "<br>",
+            #validation_values$perfect_agreements_current_cycle,
+            "items coded")
         ),
         stringsAsFactors = FALSE
       )
