@@ -31,11 +31,11 @@ Inspired by the Epistemic Analytics Lab and developed with assistance from Claud
 
 Shaffer, D.W. & Cai, Z. (2024). Perfect Sampling.  
 
+Arastoopour Irgens, G. & Eagan, B. (2023). The Foundations and Fundamentals of Quantitative Ethnography  
+
 Shaffer, D.W. & Ruis, A.R. (2021). How We Code.  
 
 Eagan, B. & colleagues. (2015). Can We Rely on IRR?  
-
-Arastoopour Irgens, G. & Eagan, B. (2023). The Foundations and Fundamentals of Quantitative Ethnography  
 
 # Author
 Golnaz Arastoopour Irgens
