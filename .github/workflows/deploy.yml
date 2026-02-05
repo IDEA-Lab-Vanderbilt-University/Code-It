@@ -2,7 +2,7 @@ name: Deploy to Lightsail
 
 on:
   push:
-    branches: [ main ]  # Change to 'master' if that's your main branch
+    branches: [ main ]  
 
 jobs:
   deploy:
@@ -19,6 +19,6 @@ jobs:
         username: ${{ secrets.LIGHTSAIL_USER }}
         key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
         source: "*"
-        target: "/srv/codeit-app"  # Change this path
+        target: "/srv/codeit-app"  
         strip_components: 0
-        rm: true  # This removes files on server that aren't in your repo
+        rm: false
