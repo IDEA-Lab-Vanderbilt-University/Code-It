@@ -43,6 +43,5 @@ Golnaz Arastoopour Irgens
 # Recommended Citation
 If you use Code It! in your research, please cite:  
 
-Arastoopour Irgens, G. (2025). Code It!: A web-based application for developing and validating automated qualitative coding systems. [URL]
-
+Arastoopour Irgens, G., Cai, Z., Eagan, B., Marquart, C., Ruis, A.R., Tan, Y., & Williamson Shaffer, D. (2025). Code It!: A web-based application for developing and validating automated qualitative coding systems. [URL]
 
