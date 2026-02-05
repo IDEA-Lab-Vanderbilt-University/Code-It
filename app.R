@@ -391,7 +391,7 @@ ui <-
                    p("If you use Code It! in your research, please cite:"),
                    div(
                      style = "background-color: #f8f9fa; padding: 15px; border-left: 4px solid #667eea; margin: 15px 0; border-radius: 4px;",
-                     p("Arastoopour Irgens, G. (2025).", em("Code It!: A web-based application for developing and validating automated qualitative coding systems."), "[URL]", style = "margin: 0;")
+                     p("Arastoopour Irgens, G., Cai, Z., Eagan, B., Marquart, C., Ruis, A.R., Tan, Y., & Williamson Shaffer, D. (2025).", em("Code It!: A web-based application for developing and validating automated qualitative coding systems."), "[URL]", style = "margin: 0;")
                    ),
 
                    hr(),
