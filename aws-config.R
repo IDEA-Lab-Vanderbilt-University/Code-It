@@ -46,7 +46,7 @@ authenticate_cognito_user <- function(username, password) {
   # Parse error message
   if (status_code(response) == 400) {
     response_text <- httr::content(response, "text", encoding = "UTF-8")
-    error_info <- fromJSON(response_text)
+    error_info <- tryCatch(fromJSON(response_text), error = function(e) list(message = "Authentication failed. Please try again."))
     return(list(success = FALSE, message = error_info$message))
   }
 
@@ -82,7 +82,7 @@ register_cognito_user <- function(username, password, email) {
     return(list(success = TRUE, message = "Registration successful! Please check your email to verify your account.", user_sub = result$UserSub))
   } else {
     response_content <- httr::content(response, "text", encoding = "UTF-8")
-    error_info <- fromJSON(response_content)
+    error_info <- tryCatch(fromJSON(response_content), error = function(e) list(message = "Registration failed. Please try again."))
     return(list(success = FALSE, message = error_info$message))
   }
 }
@@ -148,7 +148,7 @@ forgot_password_cognito <- function(username) {
     return(list(success = TRUE, message = "Password reset code sent to your email."))
   } else {
     response_content <- httr::content(response, "text", encoding = "UTF-8")
-    error_info <- fromJSON(response_content)
+    error_info <- tryCatch(fromJSON(response_content), error = function(e) list(message = "Password reset request failed. Please try again."))
     return(list(success = FALSE, message = error_info$message))
   }
 }
@@ -178,7 +178,7 @@ confirm_forgot_password_cognito <- function(username, confirmation_code, new_pas
     return(list(success = TRUE, message = "Password reset successful! You can now log in with your new password."))
   } else {
     response_content <- httr::content(response, "text", encoding = "UTF-8")
-    error_info <- fromJSON(response_content)
+    error_info <- tryCatch(fromJSON(response_content), error = function(e) list(message = "Password reset failed. Please try again."))
     return(list(success = FALSE, message = error_info$message))
   }
 }

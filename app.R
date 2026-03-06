@@ -224,8 +224,9 @@ ui <-
             ),
             div(
               style = "text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #e9ecef;",
-              p("This app created by the ",
+              p(
                 a("IDEA Lab", href = "https://lab.vanderbilt.edu/idealab/", target="_blank"),
+                a("Epistemic Analytics", href = "https://epistemicanalytics.org", target="_blank"),
                 style = "color: #95a5a6; font-size: 12px; margin: 0;")
             )
           ),
@@ -629,6 +630,33 @@ ui <-
                  )
           )
         ),
+
+        # Per-keyword breakdown (collapsible)
+        fluidRow(
+          column(12,
+                 wellPanel(
+                   style = "padding-bottom: 10px;",
+                   div(
+                     style = "display: flex; align-items: center; justify-content: space-between; cursor: pointer;",
+                     onclick = "var b = document.getElementById('keyword_breakdown_body'); var a = document.getElementById('keyword_breakdown_arrow'); b.style.display = b.style.display === 'none' ? 'block' : 'none'; a.innerHTML = b.style.display === 'none' ? '▶' : '▼';",
+                     div(
+                       h4("Per-Keyword Performance", style = "margin: 0; display: inline;"),
+                       span(" — click to expand/collapse",
+                            style = "font-size: 12px; color: #6c757d; margin-left: 6px;")
+                     ),
+                     span(id = "keyword_breakdown_arrow", "▶",
+                          style = "font-size: 16px; color: #6c757d; user-select: none;")
+                   ),
+                   div(
+                     id = "keyword_breakdown_body",
+                     style = "display: none; margin-top: 15px;",
+                     p("Each keyword's contribution to the overall training results. A keyword with a high false rate is firing on items you said should NOT be coded.",
+                       style = "color: #6c757d; font-size: 13px; margin-bottom: 12px;"),
+                     DT::dataTableOutput("keyword_breakdown_table")
+                   )
+                 )
+          )
+        ),
         fluidRow(
           column(9,
                  wellPanel(
@@ -719,22 +747,22 @@ ui <-
 
                  )
           )
-        ),
+        )
 
         # Next Step Box
-        fluidRow(
-          column(12,
-                 div(
-                   class = "alert alert-info",
-                   style = "margin-top: 20px;",
-                   h5(icon("lightbulb"), " Ready for Validation?", style = "color: #004085; display: inline; margin-left: 5px;"),
-                   p("Once you are satified with your Cohen's Kappa, FDR, and FOR, move on to validation.",
-                     style = "margin: 10px 0;"),
-                   actionButton("goto_validation", "Go to Validation →",
-                                class = "btn-primary")
-                 )
-          )
-        )
+        # fluidRow(
+        #   column(12,
+        #          div(
+        #            class = "alert alert-info",
+        #            style = "margin-top: 20px;",
+        #            h5(icon("lightbulb"), " Ready for Validation?", style = "color: #004085; display: inline; margin-left: 5px;"),
+        #            p("Once you are satified with your Cohen's Kappa, FDR, and FOR, move on to validation.",
+        #              style = "margin: 10px 0;"),
+        #            actionButton("goto_validation", "Go to Validation →",
+        #                         class = "btn-primary")
+        #          )
+        #   )
+        # )
       )
     ),
 
@@ -863,7 +891,7 @@ ui <-
                                   style = "margin-bottom: 15px;"),
                      p("This will apply your validated classifier to all data and provide download.",
                        style = "color: #6c757d; font-size: 13px; text-align: center; margin-bottom: 20px;"),
-                     actionButton("restart_validation",
+                     actionButton("restart_validation_post",
                                   "Restart Validation",
                                   icon = icon("refresh"),
                                   class = "btn-warning btn-block btn-sm")
@@ -914,7 +942,11 @@ server <- function(input, output, session) {
     req(current_user())
 
     # Base directory for all user data
-    base_dir <- "/srv/codeit-app/user_data"
+    base_dir <- if (Sys.getenv("DEV_MODE") == "true") {
+      file.path(getwd(), "dev_user_data")
+    } else {
+      "/srv/codeit-app/user_data"
+    }
 
     # Create base directory if it doesn't exist
     if (!dir.exists(base_dir)) {
@@ -940,6 +972,16 @@ server <- function(input, output, session) {
     access_token = NULL,
     pending_username = NULL
   )
+
+  # DEV MODE: auto-login without Cognito when DEV_MODE=true in .Renviron
+  observe({
+    if (Sys.getenv("DEV_MODE") == "true" && !auth_values$authenticated) {
+      auth_values$authenticated <- TRUE
+      auth_values$user_info <- list(username = "dev_user")
+      auth_values$access_token <- "dev_token"
+      showNotification("DEV MODE: auto-logged in as dev_user", type = "message", duration = 4)
+    }
+  })
 
   # Control authentication display
   output$authenticated <- reactive({
@@ -1074,7 +1116,7 @@ server <- function(input, output, session) {
 
       # Clear form and redirect to login
       updateTextInput(session, "confirm_code", value = "")
-      session$userData$pending_username <- NULL
+      auth_values$pending_username <- NULL
 
       shinyjs::delay(2000, runjs("showView('login-view')"))
 
@@ -1165,6 +1207,46 @@ server <- function(input, output, session) {
     auth_values$authenticated <- FALSE
     auth_values$user_info <- NULL
     auth_values$access_token <- NULL
+    session_values$data_loaded <- FALSE
+
+    # Clear all in-memory data so next user (or re-login) starts clean
+    # without seeing the previous user's data during the load delay
+    session_values$saved_dataset <- NULL
+    session_values$saved_text_column <- NULL
+    values$codebook_input <- data.frame(
+      CodeName = c("Click to enter Code Name"),
+      CodeDefinition = c("Click to enter Code Definition"),
+      Examples = c("Click to enter Code Examples"),
+      stringsAsFactors = FALSE
+    )
+    classifier_values$classifier_input <- data.frame(Keywords = character(), stringsAsFactors = FALSE)
+    coded_data_values$coded_data <- NULL
+    training_values$training_results <- data.frame(
+      .row_id = integer(), TextData = character(),
+      auto.coding = integer(), user.coding = integer(), stringsAsFactors = FALSE
+    )
+    training_values$shown_positive_indices <- integer()
+    training_values$shown_negative_indices <- integer()
+    training_values$current_sample <- NULL
+    validation_values$validation_pool <- NULL
+    validation_values$validation_complete <- FALSE
+    validation_values$current_cycle <- 1
+    validation_values$cycle_failed <- FALSE
+    validation_values$perfect_agreements_current_cycle <- 0
+    validation_values$total_items_coded <- 0
+    validation_values$current_cycle_results <- data.frame(
+      pool_index = integer(), original_.row_id = integer(),
+      TextData = character(), auto.coding = integer(), user.coding = integer(),
+      cycle = integer(), stringsAsFactors = FALSE
+    )
+    validation_values$all_validation_results <- data.frame()
+
+    # Clear session$userData so a re-login can't access prior user's coded dataset
+    session$userData$final_coded_dataset <- NULL
+    session$userData$coding_complete <- NULL
+    session$userData$reset_username <- NULL
+    session$userData$delete_info <- NULL
+    session_values$last_upload_path <- NULL
 
     # Clear any messages
     output$login_message <- renderUI({ NULL })
@@ -1209,7 +1291,9 @@ server <- function(input, output, session) {
   training_values <- reactiveValues(
     current_sample = NULL,
     current_.row_id = NULL,
-    shown_indices = integer(),
+    #shown_indices = integer(),
+    shown_positive_indices = integer(),
+    shown_negative_indices = integer(),
     current_example_type = NULL,
     training_results = data.frame(
       .row_id = integer(),
@@ -1251,7 +1335,8 @@ server <- function(input, output, session) {
     saved_dataset = NULL,
     saved_text_column = NULL,
     current_tab = "ud",
-    data_loaded = FALSE
+    data_loaded = FALSE,
+    last_upload_path = NULL
   )
 
 
@@ -1286,7 +1371,9 @@ server <- function(input, output, session) {
       # Save training data
       training_data <- list(
         training_results = training_values$training_results,
-        shown_indices = training_values$shown_indices
+        #shown_indices = training_values$shown_indices
+        shown_positive_indices = training_values$shown_positive_indices,
+        shown_negative_indices = training_values$shown_negative_indices
       )
       saveRDS(training_data, file.path(user_dir, "training_data.rds"))
 
@@ -1371,7 +1458,9 @@ server <- function(input, output, session) {
       if (file.exists(training_file)) {
         training_data <- readRDS(training_file)
         training_values$training_results <- training_data$training_results
-        training_values$shown_indices <- training_data$shown_indices
+        #training_values$shown_indices <- training_data$shown_indices
+        training_values$shown_positive_indices <- if (!is.null(training_data$shown_positive_indices)) training_data$shown_positive_indices else integer()
+        training_values$shown_negative_indices <- if (!is.null(training_data$shown_negative_indices)) training_data$shown_negative_indices else integer()
         cat("Training data loaded for user:", current_user(), "\n")
       }
 
@@ -1391,6 +1480,7 @@ server <- function(input, output, session) {
         validation_values$estimated_baserate <- validation_data$estimated_baserate
         validation_values$adjusted_baserate <- validation_data$adjusted_baserate
         validation_values$a_max <- validation_data$a_max
+        validation_values$cycle_failed <- FALSE  # Don't auto-restart on session restore; let user decide
         cat("Validation data loaded for user:", current_user(), "\n")
       }
 
@@ -1409,6 +1499,12 @@ server <- function(input, output, session) {
       }
 
       session_values$data_loaded <- TRUE
+
+      # Set instructional placeholder for training tab so user knows what to do
+      output$sample_text <- renderUI({
+        p("Click 'Show Positive Example' or 'Show Negative Example' to begin training.",
+          style = "color: #6c757d; font-style: italic; text-align: center; margin: 20px 0;")
+      })
 
       # Show success message
       showNotification(
@@ -1484,6 +1580,13 @@ server <- function(input, output, session) {
   # first clear existing dataset (if any) when user uploads a dataset AND clear stuff from other tabs to avoid mismatched rows and other issues
   # Observer to reset ALL data when new file is uploaded
   observeEvent(input$data_upload, {
+    # Do not wipe existing data if this is a session restore (fileInput re-emits last value
+    # on reconnect). Detect re-emit by comparing the uploaded path against the last known
+    # genuine upload path. A true new upload always produces a different temp file path.
+    if (!is.null(session_values$saved_dataset) &&
+        !is.null(session_values$last_upload_path) &&
+        identical(input$data_upload$datapath, session_values$last_upload_path)) return()
+
     tryCatch({
       # Clear dataset
       session_values$saved_dataset <- NULL
@@ -1508,12 +1611,14 @@ server <- function(input, output, session) {
       # Clear training data
       training_values$training_results <- data.frame(
         .row_id = integer(),
-        text = character(),
-        user.coding = numeric(),
-        auto.coding = numeric(),
+        TextData = character(),
+        auto.coding = integer(),
+        user.coding = integer(),
         stringsAsFactors = FALSE
       )
-      training_values$shown_indices <- integer()
+
+      training_values$shown_positive_indices <- integer()
+      training_values$shown_negative_indices <- integer()
       training_values$current_sample <- NULL
       training_values$current_.row_id <- NULL
       training_values$current_example_type <- NULL
@@ -1526,10 +1631,12 @@ server <- function(input, output, session) {
       validation_values$current_validation_item <- NULL
       validation_values$current_pool_index <- NULL
       validation_values$current_cycle_results <- data.frame(
-        .row_id = integer(),
-        text = character(),
-        user.coding = numeric(),
-        auto.coding = numeric(),
+        pool_index = integer(),
+        original_.row_id = integer(),
+        TextData = character(),
+        auto.coding = integer(),
+        user.coding = integer(),
+        cycle = integer(),
         stringsAsFactors = FALSE
       )
       validation_values$all_validation_results <- data.frame()
@@ -1586,6 +1693,7 @@ server <- function(input, output, session) {
 
     # Save the newly uploaded dataset
     session_values$saved_dataset <- data
+    session_values$last_upload_path <- input$data_upload$datapath  # Track path to detect re-emits
     auto_save()
     return(data)
   })
@@ -1678,7 +1786,7 @@ server <- function(input, output, session) {
   # Reactive to get the current code name
   current_code <- reactive({
     code_name <- values$codebook_input$CodeName[1]
-    if (is.na(code_name) || code_name == "" || code_name == "DOUBLE Click to enter Code Name") {
+    if (is.na(code_name) || code_name == "" || code_name == "DOUBLE Click to enter Code Name" || code_name == "Click to enter Code Name")  {
       return(NULL)
     }
     return(code_name)
@@ -1783,12 +1891,25 @@ server <- function(input, output, session) {
 
         # Create coded dataframe
         coded_df <- data.frame(
+          .row_id = data$.row_id,
           TextData = data[[text_col]],
           stringsAsFactors = FALSE
         )
         coded_df[[new_col_name]] <- as.integer(matches)
 
         coded_data_values$coded_data <- coded_df
+
+        # Classifiers changed — invalidate existing validation pool so the next visit
+        # to the validation tab rebuilds it from the updated predictions
+        validation_values$validation_pool <- NULL
+        validation_values$validation_complete <- FALSE
+        validation_values$current_cycle_results <- data.frame(
+          pool_index = integer(), original_.row_id = integer(),
+          TextData = character(), auto.coding = integer(), user.coding = integer(),
+          cycle = integer(), stringsAsFactors = FALSE
+        )
+        validation_values$all_validation_results <- data.frame()
+
         auto_save()
         showNotification(
           "Coding updated with regex support!",
@@ -1938,83 +2059,80 @@ server <- function(input, output, session) {
   })
 
   output$classifier_list <- DT::renderDataTable({
-    # Force reactive dependency on classifier_values$classifier_input
     current_classifiers <- classifier_values$classifier_input
+    training_data <- training_values$training_results  # reactive dep for live stats
 
     if (nrow(current_classifiers) == 0) {
       datatable(
         data.frame(Message = "No classifiers added yet. Use the form above to add classifiers."),
-        rownames = FALSE,
-        colnames = NULL,
-        class = "cell-border stripe",
-        editable = FALSE,
-        options = list(dom = 't', ordering = FALSE)
+        rownames = FALSE, colnames = NULL, class = "cell-border stripe",
+        editable = FALSE, options = list(dom = 't', ordering = FALSE)
       )
     } else {
-      # Expand keywords into individual rows with tracking info
-      # Use seq_len and lapply to ensure correct group_id assignment
       expanded_data <- do.call(rbind, lapply(seq_len(nrow(current_classifiers)), function(i) {
         keywords <- trimws(strsplit(current_classifiers$Keywords[i], ",")[[1]])
         keywords <- keywords[keywords != ""]
         if (length(keywords) > 0) {
-          data.frame(
-            Group_ID = i,  # Use actual row index from current state
-            Keyword = keywords,
-            Keyword_Index = 1:length(keywords),
-            stringsAsFactors = FALSE
-          )
+          data.frame(Group_ID = i, Keyword = keywords,
+                     Keyword_Index = seq_along(keywords), stringsAsFactors = FALSE)
         } else {
-          data.frame(
-            Group_ID = integer(0),
-            Keyword = character(0),
-            Keyword_Index = integer(0),
-            stringsAsFactors = FALSE
-          )
+          data.frame(Group_ID = integer(0), Keyword = character(0),
+                     Keyword_Index = integer(0), stringsAsFactors = FALSE)
         }
       }))
 
       if (nrow(expanded_data) == 0) {
-        datatable(
-          data.frame(Message = "No valid keywords found."),
-          rownames = FALSE,
-          colnames = NULL,
-          options = list(dom = 't', ordering = FALSE)
-        )
+        datatable(data.frame(Message = "No valid keywords found."),
+                  rownames = FALSE, colnames = NULL,
+                  options = list(dom = 't', ordering = FALSE))
       } else {
-        # Add delete buttons for each individual keyword
+        has_training <- nrow(training_data) > 0
+
+        stats_cols <- lapply(expanded_data$Keyword, function(kw) {
+          if (!has_training) return(list(fires = NA_integer_,
+                                         acc_html = '<span style="color:#aaa;font-size:11px;">no data</span>'))
+          fired <- tryCatch(grepl(kw, training_data$TextData, ignore.case = TRUE),
+                            error = function(e) rep(FALSE, nrow(training_data)))
+          tp_k  <- sum(fired & training_data$auto.coding == 1 & training_data$user.coding == 1)
+          fp_k  <- sum(fired & training_data$auto.coding == 1 & training_data$user.coding == 0)
+          fires <- tp_k + fp_k
+          acc   <- if (fires > 0) round(tp_k / fires * 100, 1) else NA_real_
+          acc_html <- if (is.na(acc)) '<span style="color:#aaa;font-size:11px;">—</span>'
+          else if (acc >= 80) paste0('<span style="color:#28a745;font-weight:600;font-size:12px;">● ', acc, '%</span>')
+          else if (acc >= 50) paste0('<span style="color:#e6a817;font-weight:600;font-size:12px;">● ', acc, '%</span>')
+          else                paste0('<span style="color:#dc3545;font-weight:600;font-size:12px;">● ', acc, '%</span>')
+          list(fires = as.integer(fires), acc_html = acc_html)
+        })
+
+        expanded_data$Fires    <- sapply(stats_cols, `[[`, "fires")
+        expanded_data$Accuracy <- sapply(stats_cols, `[[`, "acc_html")
+
         expanded_data$Delete_Button <- paste0(
           '<button class="btn btn-danger btn-xs" onclick="deleteKeyword(',
           expanded_data$Group_ID, ',', expanded_data$Keyword_Index,
-          ')" style="padding: 2px 6px; font-size: 11px;">',
-          '<i class="fa fa-trash"></i>',
-          '</button>'
+          ')" style="padding: 2px 6px; font-size: 11px;"><i class="fa fa-trash"></i></button>'
         )
 
-        # Create final display (only Keyword and Delete columns)
         final_display <- data.frame(
-          `Keyword` = expanded_data$Keyword,
-          `Delete` = expanded_data$Delete_Button,
-          stringsAsFactors = FALSE,
-          check.names = FALSE
+          `Keyword`  = expanded_data$Keyword,
+          `Fires`    = expanded_data$Fires,
+          `Accuracy` = expanded_data$Accuracy,
+          `Delete`   = expanded_data$Delete_Button,
+          stringsAsFactors = FALSE, check.names = FALSE
         )
 
-        datatable(
-          final_display,
-          rownames = FALSE,
-          colnames = NULL,
-          class = "cell-border stripe",
-          escape = FALSE,
-          editable = FALSE,
-          options = list(
-            dom = 't',
-            ordering = FALSE,
-            pageLength = 25,
-            columnDefs = list(
-              list(width = '80%', targets = 0, className = 'dt-left'),     # Keyword
-              list(width = '20%', targets = 1, className = 'dt-center')    # Delete
-            )
-          )
-        )
+        datatable(final_display, rownames = FALSE,
+                  colnames = c("Keyword", "Fires", "Accuracy", ""),
+                  class = "cell-border stripe", escape = FALSE, editable = FALSE,
+                  options = list(
+                    dom = 't', ordering = FALSE, pageLength = 25,
+                    columnDefs = list(
+                      list(width = '55%', targets = 0, className = 'dt-left'),
+                      list(width = '12%', targets = 1, className = 'dt-center'),
+                      list(width = '18%', targets = 2, className = 'dt-center'),
+                      list(width = '15%', targets = 3, className = 'dt-center')
+                    )
+                  ))
       }
     }
   })
@@ -2235,6 +2353,30 @@ server <- function(input, output, session) {
 
   ##### TRAINING ####
 
+  # Helper: wrap matched keyword spans in highlighted HTML for display
+  highlight_keywords_in_text <- function(text, keywords) {
+    if (length(keywords) == 0 || is.null(keywords)) return(htmltools::htmlEscape(text))
+    result <- htmltools::htmlEscape(text)
+    for (kw in keywords) {
+      tryCatch({
+        matches <- gregexpr(kw, text, ignore.case = TRUE, perl = TRUE)
+        match_strings <- regmatches(text, matches)[[1]]
+        if (length(match_strings) > 0) {
+          for (ms in unique(match_strings)) {
+            escaped_ms <- htmltools::htmlEscape(ms)
+            result <- gsub(
+              escaped_ms,
+              paste0('<mark style="background-color:#fff3cd;border-bottom:2px solid #e6a817;padding:1px 2px;border-radius:2px;font-weight:600;" title="Matched by: ',
+                     htmltools::htmlEscape(kw), '">', escaped_ms, '</mark>'),
+              result, fixed = TRUE
+            )
+          }
+        }
+      }, error = function(e) NULL)
+    }
+    result
+  }
+
   # Helper function to show training example
   show_training_example <- function(example_type) {
     req(coded_data_values$coded_data, current_code(), dataset())
@@ -2248,7 +2390,9 @@ server <- function(input, output, session) {
       # Determine which indices to use based on example type
       target_value <- if (example_type == "positive") 1 else 0
       target_indices <- which(coded_data[[new_col_name]] == target_value)
-      available_indices <- setdiff(target_indices, training_values$shown_indices)
+      #available_indices <- setdiff(target_indices, training_values$shown_indices)
+      shown <- if (example_type == "positive") training_values$shown_positive_indices else training_values$shown_negative_indices
+      available_indices <- setdiff(target_indices, shown)
 
       if (length(available_indices) == 0) {
         output$sample_text <- renderUI({
@@ -2256,19 +2400,45 @@ server <- function(input, output, session) {
             style = "color: #ffc107; font-weight: bold;")
         })
         training_values$current_sample <- NULL
+        shinyjs::hide("training_yes")
+        shinyjs::hide("training_no")
       } else {
         # Sample and retrieve data
         random_idx <- sample(available_indices, 1)
         selected_text <- coded_data[random_idx, "TextData"]
         auto_coding <- coded_data[random_idx, new_col_name]
-        actual_row_id <- original_data$.row_id[random_idx]
+        actual_row_id <- coded_data$.row_id[random_idx]
 
         # Update training state
-        training_values$shown_indices <- c(training_values$shown_indices, random_idx)
+        #training_values$shown_indices <- c(training_values$shown_indices, random_idx)
+        if (example_type == "positive") {
+          training_values$shown_positive_indices <- c(training_values$shown_positive_indices, random_idx)
+        } else {
+          training_values$shown_negative_indices <- c(training_values$shown_negative_indices, random_idx)
+        }
+        # Identify which individual keywords matched this text (for highlight on false-positive)
+        all_keywords_vec <- classifier_values$classifier_input %>%
+          rowwise() %>%
+          do({
+            kws <- trimws(strsplit(.$Keywords, ",")[[1]])
+            kws <- kws[nzchar(kws)]
+            data.frame(Keyword = kws, stringsAsFactors = FALSE)
+          }) %>%
+          ungroup() %>%
+          pull(Keyword)
+
+        matched_keywords <- character(0)
+        if (length(all_keywords_vec) > 0) {
+          matched_keywords <- all_keywords_vec[sapply(all_keywords_vec, function(kw) {
+            tryCatch(grepl(kw, selected_text, ignore.case = TRUE), error = function(e) FALSE)
+          })]
+        }
+
         training_values$current_sample <- list(
           text = selected_text,
           auto_coding = auto_coding,
-          .row_id = actual_row_id
+          .row_id = actual_row_id,
+          matched_keywords = matched_keywords
         )
         training_values$current_example_type <- example_type
 
@@ -2327,6 +2497,8 @@ server <- function(input, output, session) {
     shinyjs::hide("training_yes")
     shinyjs::hide("training_no")
 
+    auto_save()  # Save after every training response
+
     # Show agreement/disagreement feedback
     agreement <- ifelse(auto_coding == user_coding, "Agreement! ✓", "Disagreement noted.")
     color <- ifelse(auto_coding == user_coding, "#28a745", "#ffc107")
@@ -2346,12 +2518,14 @@ server <- function(input, output, session) {
 
     user_coding <- 0  # User says NO, should not be coded
     auto_coding <- training_values$current_sample$auto_coding
+    sample_text_val <- training_values$current_sample$text
+    matched_kws <- training_values$current_sample$matched_keywords
 
     new_training_row <- data.frame(
       .row_id = training_values$current_sample$.row_id,
-      TextData = training_values$current_sample$text,
-      auto.coding = auto_coding,        # What classifier predicted
-      user.coding = user_coding,        # What user decided
+      TextData = sample_text_val,
+      auto.coding = auto_coding,
+      user.coding = user_coding,
       stringsAsFactors = FALSE
     )
 
@@ -2361,16 +2535,37 @@ server <- function(input, output, session) {
     shinyjs::hide("training_yes")
     shinyjs::hide("training_no")
 
-    # Show agreement/disagreement feedback
-    agreement <- ifelse(auto_coding == user_coding, "Agreement! ✓", "Disagreement noted.")
-    color <- ifelse(auto_coding == user_coding, "#28a745", "#ffc107")
+    auto_save()
 
+    # False positive: classifier said YES but user said NO — show which keyword caused it
+    if (auto_coding == 1 && length(matched_kws) > 0) {
+      highlighted_html <- highlight_keywords_in_text(sample_text_val, matched_kws)
+      output$sample_text <- renderUI({
+        div(
+          HTML(paste0('<p style="line-height:1.7;margin:0 0 12px 0;font-size:14px;">', highlighted_html, '</p>')),
+          p("Keyword(s) that triggered match highlighted above.",
+            style = "color: #6c757d; font-style: italic; text-align: left;"),
+          actionButton("training_fp_continue", "Got it, next example →", class = "btn-sm btn-outline-secondary")
+        )
+      })
+    } else {
+      agreement <- ifelse(auto_coding == user_coding, "Agreement! ✓", "Disagreement noted.")
+      color <- ifelse(auto_coding == user_coding, "#28a745", "#ffc107")
+      output$sample_text <- renderUI({
+        div(
+          p(agreement, style = paste0("color: ", color, "; font-weight: bold; text-align: center; margin-bottom: 10px;")),
+          p("Response recorded! Click a button above to see another example.",
+            style = "color: #6c757d; font-style: italic; text-align: center;")
+        )
+      })
+    }
+  })
+
+  # "Got it, next" button after false positive explanation
+  observeEvent(input$training_fp_continue, {
     output$sample_text <- renderUI({
-      div(
-        p(agreement, style = paste0("color: ", color, "; font-weight: bold; text-align: center; margin-bottom: 10px;")),
-        p("Response recorded! Click a button above to see another example.",
-          style = "color: #6c757d; font-style: italic; text-align: center;")
-      )
+      p("Response recorded! Click a button above to see another example.",
+        style = "color: #6c757d; font-style: italic; text-align: center; margin: 20px 0;")
     })
   })
 
@@ -2515,7 +2710,8 @@ server <- function(input, output, session) {
       )
 
       # Reset shown indices so user can see examples again
-      training_values$shown_indices <- integer()
+      training_values$shown_positive_indices <- integer()
+      training_values$shown_negative_indices <- integer()
 
       # Clear current sample if any
       training_values$current_sample <- NULL
@@ -2528,8 +2724,8 @@ server <- function(input, output, session) {
       auto_save()  # Auto-save the reset state
 
       # Hide any visible agree/disagree buttons
-      shinyjs::hide("agree")
-      shinyjs::hide("disagree")
+      shinyjs::hide("training_yes")
+      shinyjs::hide("training_no")
 
       # Reset sample text display
       output$sample_text <- renderUI({
@@ -2590,6 +2786,64 @@ server <- function(input, output, session) {
         )
       )
     }
+  })
+
+  # Per-keyword breakdown table (training tab collapsible panel)
+  output$keyword_breakdown_table <- DT::renderDataTable({
+    training_data <- training_values$training_results
+    current_classifiers <- classifier_values$classifier_input
+
+    if (nrow(training_data) == 0 || nrow(current_classifiers) == 0) {
+      return(datatable(
+        data.frame(Message = "Complete some training to see per-keyword stats."),
+        rownames = FALSE, colnames = NULL,
+        options = list(dom = 't', ordering = FALSE)
+      ))
+    }
+
+    all_keywords_vec <- unlist(lapply(seq_len(nrow(current_classifiers)), function(i) {
+      kws <- trimws(strsplit(current_classifiers$Keywords[i], ",")[[1]])
+      kws[nzchar(kws)]
+    }))
+
+    if (length(all_keywords_vec) == 0) {
+      return(datatable(
+        data.frame(Message = "No valid keywords found."),
+        rownames = FALSE, colnames = NULL,
+        options = list(dom = 't', ordering = FALSE)
+      ))
+    }
+
+    rows <- lapply(all_keywords_vec, function(kw) {
+      fired <- tryCatch(
+        grepl(kw, training_data$TextData, ignore.case = TRUE),
+        error = function(e) rep(FALSE, nrow(training_data))
+      )
+      tp_k  <- sum(fired & training_data$auto.coding == 1 & training_data$user.coding == 1)
+      fp_k  <- sum(fired & training_data$auto.coding == 1 & training_data$user.coding == 0)
+      fires <- tp_k + fp_k
+      accuracy <- if (fires > 0) round(tp_k / fires * 100, 1) else NA_real_
+      acc_display <- if (is.na(accuracy)) {
+        '<span style="color:#aaa;">—</span>'
+      } else if (accuracy >= 80) {
+        paste0('<span style="color:#28a745;font-weight:600;">● ', accuracy, '%</span>')
+      } else if (accuracy >= 50) {
+        paste0('<span style="color:#e6a817;font-weight:600;">● ', accuracy, '%</span>')
+      } else {
+        paste0('<span style="color:#dc3545;font-weight:600;">● ', accuracy, '%</span>')
+      }
+      data.frame(Keyword = kw, Fires = fires, `Agreements (TP)` = tp_k,
+                 `Accuracy` = acc_display, stringsAsFactors = FALSE, check.names = FALSE)
+    })
+
+    breakdown_df <- do.call(rbind, rows)
+    datatable(breakdown_df, rownames = FALSE, escape = FALSE,
+              class = "cell-border stripe compact",
+              options = list(dom = 't', ordering = TRUE, pageLength = 30,
+                             columnDefs = list(
+                               list(className = 'dt-left',   targets = 0),
+                               list(className = 'dt-center', targets = 1:3)
+                             )))
   })
 
   # Download handler
@@ -2860,11 +3114,9 @@ server <- function(input, output, session) {
     }
 
     if (length(excluded_indices) > 0) {
-      available_data <- coded_data[-excluded_indices, ]
-      available_indices <- setdiff(1:nrow(coded_data), excluded_indices)
+      available_data <- coded_data[!coded_data$.row_id %in% excluded_indices, ]
     } else {
       available_data <- coded_data
-      available_indices <- 1:nrow(coded_data)
     }
 
     if (nrow(available_data) == 0) {
@@ -2887,23 +3139,25 @@ server <- function(input, output, session) {
 
     # Check if base rate is reasonable for validation
     if (estimated_baserate < 0.03 || estimated_baserate > 0.95) {
-      showModal(modalDialog(
-        title = "Extreme Base Rate Detected",
-        div(
-          p(paste("Your classifiers predict a base rate of", round(estimated_baserate * 100, 1), "%")),
-          p("This may lead to very large required sample sizes."),
-          p("Consider:"),
-          tags$ul(
-            tags$li("Refining your classifiers to be less extreme"),
-            tags$li("Adding more diverse keywords"),
-            tags$li("Checking if your code definition is too narrow/broad")
+      shiny::isolate({
+        showModal(modalDialog(
+          title = "Extreme Base Rate Detected",
+          div(
+            p(paste("Your classifiers predict a base rate of", round(estimated_baserate * 100, 1), "%")),
+            p("This may lead to very large required sample sizes."),
+            p("Consider:"),
+            tags$ul(
+              tags$li("Refining your classifiers to be less extreme"),
+              tags$li("Adding more diverse keywords"),
+              tags$li("Checking if your code definition is too narrow/broad")
+            )
+          ),
+          footer = tagList(
+            modalButton("Continue Anyway"),
+            actionButton("go_back_to_classifiers", "Refine Classifiers", class = "btn-primary")
           )
-        ),
-        footer = tagList(
-          modalButton("Continue Anyway"),
-          actionButton("go_back_to_classifiers", "Refine Classifiers", class = "btn-primary")
-        )
-      ))
+        ))
+      })
     }
 
     # Calculate Cai's N
@@ -2926,7 +3180,7 @@ server <- function(input, output, session) {
 
     # Create validation pool for this cycle (will sample randomly when selecting items)
     validation_pool <- available_data
-    validation_pool$original_indices <- available_indices
+    validation_pool$original_indices <- available_data$.row_id
 
     return(list(
       validation_pool = validation_pool,
@@ -2944,10 +3198,15 @@ server <- function(input, output, session) {
     showNotification("Please refine your classifiers to adjust the base rate", type = "message", duration = 5)
   })
 
-  # Initialize validation when moving to validation tab
+  # Initialize or restart validation when moving to validation tab
   observeEvent(input$tabs, {
     if (input$tabs == "validation") {
-      if (is.null(validation_values$validation_pool)) {
+      if (validation_values$cycle_failed) {
+        if (start_new_validation_cycle()) {
+          shinyjs::show("validation_controls")
+          shinyjs::hide("validation_complete")
+        }
+      } else if (is.null(validation_values$validation_pool)) {
         val_setup <- initialize_validation_cycle()
         if (!is.null(val_setup)) {
           validation_values$validation_pool <- val_setup$validation_pool
@@ -3062,8 +3321,9 @@ server <- function(input, output, session) {
       } else {
         # Continue current cycle - need more perfect agreements
         # AUTO-LOAD NEXT ITEM
-        Sys.sleep(0.2)  # Small delay for smooth transition
-        load_next_validation_item()
+        shinyjs::delay(200, {
+          load_next_validation_item()
+        })
       }
     } else {
       # DISAGREEMENT - Cycle failed, must refine classifiers and start new cycle
@@ -3111,20 +3371,20 @@ server <- function(input, output, session) {
 
   # Start new validation cycle (after refinement)
   start_new_validation_cycle <- function() {
-    shinyjs::show("get_validation_item")
     # Reset current cycle data
     validation_values$current_cycle_results <- data.frame(
       pool_index = integer(), original_.row_id = integer(),
       TextData = character(), auto.coding = integer(), user.coding = integer(),
       cycle = integer(), stringsAsFactors = FALSE
     )
+
     validation_values$perfect_agreements_current_cycle <- 0
     validation_values$cycle_failed <- FALSE
-    validation_values$current_cycle <- validation_values$current_cycle + 1
 
     # Create new validation pool (fresh test set)
     val_setup <- initialize_validation_cycle()
     if (!is.null(val_setup)) {
+      validation_values$current_cycle <- validation_values$current_cycle + 1
       validation_values$validation_pool <- val_setup$validation_pool
       validation_values$cais_n <- val_setup$cais_n
       validation_values$estimated_baserate <- val_setup$estimated_baserate
@@ -3159,19 +3419,16 @@ server <- function(input, output, session) {
     if (start_new_validation_cycle()) {
       shinyjs::show("validation_controls")
       shinyjs::hide("validation_complete")
-      load_next_validation_item()
       auto_save()  # Auto-save the restart
     }
   })
 
-  # Auto-restart when returning to validation tab after refinement
-  observeEvent(input$tabs, {
-    if (input$tabs == "validation" && validation_values$cycle_failed) {
-      # Check if classifiers have been modified since last cycle failure
-      # For simplicity, always offer to start new cycle when returning
-      if (start_new_validation_cycle()) {
-        # Cycle successfully restarted
-      }
+  # Handler for post-completion restart button (separate ID to avoid double-fire)
+  observeEvent(input$restart_validation_post, {
+    if (start_new_validation_cycle()) {
+      shinyjs::show("validation_controls")
+      shinyjs::hide("validation_complete")
+      auto_save()
     }
   })
 
@@ -3224,7 +3481,7 @@ server <- function(input, output, session) {
                  "<br>",
                  validation_values$total_items_coded,
                  " items coded"),
-          "✅ κ > 0.80  α = 0.05"
+          "✅ κ > 0.80  α = 0.025"
         ),
         stringsAsFactors = FALSE
       )
